@@ -72,7 +72,7 @@ WSGI_APPLICATION = 'my_food_app.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgres://user:password@host:port/dbname',
+        default='postgres://food_app_db_arz6_user:v1n1eFJPWfwijqUF5LC2h90b84yMqe0a@dpg-d1khdjvdiees73ehdp2g-a:5432/food-app-db',
         conn_max_age=600
     )
 }
