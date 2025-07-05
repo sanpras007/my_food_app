@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-cnz_g219a2_sf1u=+1543^bcbyo*3lh!+byta)r2qu-soo))v7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['my_food_app.onrender.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'my_food_app.onrender.com']
 
 
 # Application definition
@@ -70,11 +70,21 @@ WSGI_APPLICATION = 'my_food_app.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default='postgres://food_app_db_arz6_user:v1n1eFJPWfwijqUF5LC2h90b84yMqe0a@dpg-d1khdjvdiees73ehdp2g-a:5432/food-app-db',
+#         conn_max_age=600
+#     )
+# }
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgres://food_app_db_arz6_user:v1n1eFJPWfwijqUF5LC2h90b84yMqe0a@dpg-d1khdjvdiees73ehdp2g-a:5432/food-app-db',
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'food_app_db_arz6',
+        'USER': 'food_app_db_arz6_user',
+        'PASSWORD': 'v1n1eFJPWfwijqUF5LC2h90b84yMqe0a',
+        'HOST': 'dpg-d1khdjvdiees73ehdp2g-a.oregon-postgres.render.com',
+        'PORT': '5432',
+    }
 }
 
 
