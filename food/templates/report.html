@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Reports</title>
+  <title>Admin Report</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="container mt-4">
-  <h3 class="mb-4">📊 Order Reports</h3>
+  <h2 class="mb-4">📊 Admin Report</h2>
 
-  <form method="GET" class="row g-3 mb-4">
+  <form method="get" class="row g-2 mb-4">
     <div class="col-md-3">
       <label>User</label>
-      <select class="form-control" name="user">
-        <option value="">-- All Users --</option>
+      <select name="user" class="form-select">
+        <option value="">All Users</option>
         {% for user in users %}
           <option value="{{ user.id }}" {% if user.id == selected_user_id %}selected{% endif %}>{{ user.username }}</option>
         {% endfor %}
@@ -19,42 +19,45 @@
     </div>
     <div class="col-md-3">
       <label>From Date</label>
-      <input type="date" class="form-control" name="from_date" value="{{ from_date }}">
+      <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
     </div>
     <div class="col-md-3">
       <label>To Date</label>
-      <input type="date" class="form-control" name="to_date" value="{{ to_date }}">
+      <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
     </div>
     <div class="col-md-3 d-flex align-items-end">
-      <button type="submit" class="btn btn-primary">Generate Report</button>
+      <button type="submit" class="btn btn-primary me-2">Filter</button>
+      <a href="?{% if selected_user_id %}user={{ selected_user_id }}&{% endif %}{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}export=csv" class="btn btn-success">Export CSV</a>
     </div>
   </form>
 
   {% if orders %}
-    <div class="table-responsive">
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>User</th>
-            <th>Date</th>
-            <th>Total Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for order in orders %}
-            <tr>
-              <td>{{ order.sr_no }}</td>
-              <td>{{ order.user.username }}</td>
-              <td>{{ order.ordered_at|date:'Y-m-d H:i' }}</td>
-              <td>₹{{ order.total_amount }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>User</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td>{{ order.sr_no }}</td>
+          <td>{{ order.user.username }}</td>
+          <td>{{ order.ordered_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ order.status }}</td>
+          <td>₹{{ order.total_amount }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h5 class="text-end">🧮 Grand Total: ₹{{ total_amount }}</h5>
   {% else %}
-    <p>No orders found for the selected criteria.</p>
+    <p>No orders found for the selected filters.</p>
   {% endif %}
 </body>
 </html>

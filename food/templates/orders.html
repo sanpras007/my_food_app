@@ -9,7 +9,7 @@
 <body class="container mt-4">
   <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
     <div class="container-fluid">
-      <a class="navbar-brand" href="/">🍽️ Vending Machine</a>
+      <a class="navbar-brand" href="/">🍽️ Food Expense Calculator</a>
       <div class="collapse navbar-collapse">
         <ul class="navbar-nav me-auto">
           <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
@@ -23,8 +23,27 @@
   </nav>
 
   <h3 class="mb-4">🧾 My Orders</h3>
+    <form method="GET" class="row g-2 mb-4">
+        <div class="col-md-4">
+            <label for="from_date" class="form-label">From Date</label>
+            <input type="date" class="form-control" id="from_date" name="from_date" value="{{ request.GET.from_date }}">
+        </div>
+        <div class="col-md-4">
+            <label for="to_date" class="form-label">To Date</label>
+            <input type="date" class="form-control" id="to_date" name="to_date" value="{{ request.GET.to_date }}">
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="/orders" class="btn btn-secondary ms-2">Reset</a>
+        </div>
+    </form>
 
   {% if orders %}
+   <div class="card mb-3">
+        <div class="card-header">
+          <h4><strong>Grand Total:</strong> ₹<span id="totalSum">0</span></h4>
+        </div>
+   </div>
     {% for order in orders %}
       <div class="card mb-3">
         <div class="card-header">
@@ -40,7 +59,7 @@
               </li>
             {% endfor %}
           </ul>
-          <div class="mt-2 text-end">
+          <div class="mt-2 text-end order-total">
             <strong>Total:</strong> ₹{{ order.total_amount }}
           </div>
         </div>
@@ -51,5 +70,16 @@
   {% endif %}
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    $(document).ready(function() {
+        let sum = 0;
+        $(".order-total").each(function() {
+            const value = parseFloat($(this).text().replace(/[^\d.]/g, ''));
+            if (!isNaN(value)) sum += value;
+        });
+        $("#totalSum").text(sum.toFixed(2));
+    });
+  </script>
 </body>
 </html>
