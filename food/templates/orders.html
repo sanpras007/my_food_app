@@ -1,0 +1,55 @@
+<!-- templates/orders.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Orders</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">🍽️ Vending Machine</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/orders">My Orders</a></li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <h3 class="mb-4">🧾 My Orders</h3>
+
+  {% if orders %}
+    {% for order in orders %}
+      <div class="card mb-3">
+        <div class="card-header">
+          <strong>Order #{{ order.sr_no }}</strong> - {{ order.ordered_at|date:"M d, Y H:i" }}
+          <span class="badge bg-success float-end">{{ order.status }}</span>
+        </div>
+        <div class="card-body">
+          <ul class="list-group">
+            {% for item in order.order_items.all %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ item.item.name }} × {{ item.quantity }}
+                <span class="badge bg-primary">₹{{ item.total_price }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+          <div class="mt-2 text-end">
+            <strong>Total:</strong> ₹{{ order.total_amount }}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>You haven't placed any orders yet.</p>
+  {% endif %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!-- templates/home.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Food Vending Machine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .item-card {
+      border: 2px solid #ccc;
+      border-radius: 15px;
+      text-align: center;
+      padding: 10px;
+      transition: 0.3s ease;
+    }
+    .item-card:hover {
+      transform: scale(1.05);
+      background-color: #f8f8f8;
+    }
+    .search-box {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body class="container mt-4">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">🍽️ Vending Machine</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/orders">My Orders</a></li>
+          {% if is_admin %}
+          <li class="nav-item"><a class="nav-link" href="/reports">Reports</a></li>
+          <li class="nav-item"><a class="nav-link" href="/add-item">Add Item</a></li>
+          {% endif %}
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Search -->
+  <input type="text" class="form-control search-box" id="searchInput" onkeyup="filterItems()" placeholder="Search food items...">
+
+  <!-- Food items -->
+  <div class="row" id="item-list">
+    {% for item in items %}
+    <div class="col-6 col-md-4 col-lg-3 mb-3 item-box">
+      <div class="item-card">
+        <h5 class="item-name">{{ item.name }}</h5>
+        <p>₹{{ item.price }}</p>
+        <button class="btn btn-sm btn-primary" onclick="addToCart('{{ item.id }}', '{{ item.name }}', '{{ item.price }}')">Add</button>
+        {% if is_admin %}
+        <div class="mt-2">
+          <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ item.id }}">Edit</button>
+          <a href="/delete-item/{{ item.id }}" class="btn btn-sm btn-danger">Delete</a>
+        </div>
+
+        <!-- Edit Modal -->
+        <div class="modal fade" id="editModal{{ item.id }}" tabindex="-1" aria-labelledby="editModalLabel{{ item.id }}" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="POST" action="/edit-item/{{ item.id }}/">
+                {% csrf_token %}
+                <div class="modal-header">
+                  <h5 class="modal-title" id="editModalLabel{{ item.id }}">Edit {{ item.name }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label>Item Name</label>
+                    <input type="text" class="form-control" name="name" value="{{ item.name }}">
+                  </div>
+                  <div class="mb-3">
+                    <label>Price</label>
+                    <input type="number" class="form-control" name="price" value="{{ item.price }}">
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Cart section -->
+  <h4>🛒 Selected Items</h4>
+  <form method="POST" action="/confirm-order/">
+    {% csrf_token %}
+    <div class="table-responsive">
+      <table class="table table-bordered" id="cart-table">
+        <thead><tr><th>Item</th><th>Quantity</th><th>Price</th><th>Action</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <button type="submit" class="btn btn-success">Confirm Purchase</button>
+  </form>
+
+  <script>
+    let cart = {};
+
+    function addToCart(id, name, price) {
+      if (!cart[id]) {
+        cart[id] = { name, price, qty: 1 };
+      } else {
+        cart[id].qty++;
+      }
+      renderCart();
+    }
+
+    function removeItem(id) {
+      delete cart[id];
+      renderCart();
+    }
+
+    function renderCart() {
+      const tbody = document.querySelector('#cart-table tbody');
+      tbody.innerHTML = '';
+      for (const id in cart) {
+        const item = cart[id];
+        tbody.innerHTML += `
+          <tr>
+            <td>${item.name}</td>
+            <td>
+              <input type="number" name="qty_${id}" value="${item.qty}" min="1" class="form-control" onchange="cart['${id}'].qty = this.value">
+              <input type="hidden" name="item_ids" value="${id}">
+            </td>
+            <td>₹${item.price * item.qty}</td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem('${id}')">Remove</button></td>
+          </tr>
+        `;
+      }
+    }
+
+    function filterItems() {
+      const input = document.getElementById('searchInput');
+      const filter = input.value.toLowerCase();
+      const items = document.getElementsByClassName('item-box');
+
+      for (let i = 0; i < items.length; i++) {
+        const name = items[i].querySelector('.item-name').innerText.toLowerCase();
+        items[i].style.display = name.includes(filter) ? '' : 'none';
+      }
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
