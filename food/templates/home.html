@@ -104,6 +104,12 @@
       <table class="table table-bordered" id="cart-table">
         <thead><tr><th>Item</th><th>Quantity</th><th>Price</th><th>Action</th></tr></thead>
         <tbody></tbody>
+        <tfoot style="display: none;">
+          <tr>
+            <td colspan="2"><strong>Total</strong></td>
+            <td colspan="2" id="totalAmount">₹0</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
     <button type="submit" class="btn btn-success">Confirm Purchase</button>
@@ -128,22 +134,33 @@
 
     function renderCart() {
       const tbody = document.querySelector('#cart-table tbody');
+      const tab_foot = document.querySelector('#cart-table tfoot')
+      const totalEl = document.getElementById('totalAmount');
+      let total = 0;
       tbody.innerHTML = '';
+
       for (const id in cart) {
         const item = cart[id];
+        const itemTotal = item.price * item.qty;
+        total += itemTotal;
+
         tbody.innerHTML += `
           <tr>
             <td>${item.name}</td>
             <td>
-              <input type="number" name="qty_${id}" value="${item.qty}" min="1" class="form-control" onchange="cart['${id}'].qty = this.value">
+              <input type="number" name="qty_${id}" value="${item.qty}" min="1" class="form-control"
+                    onchange="cart['${id}'].qty = parseInt(this.value); renderCart();">
               <input type="hidden" name="item_ids" value="${id}">
             </td>
-            <td>₹${item.price * item.qty}</td>
+            <td>₹${itemTotal}</td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem('${id}')">Remove</button></td>
           </tr>
         `;
       }
+      tab_foot.style.display = Object.keys(cart).length > 0 ? 'table-footer-group' : 'none';
+      totalEl.textContent = `₹${total}`;
     }
+
 
     function filterItems() {
       const input = document.getElementById('searchInput');
