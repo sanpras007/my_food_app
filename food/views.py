@@ -176,12 +176,11 @@ def user_signup(request):
         username = request.POST['username']
         email = request.POST['email']
         password = request.POST['password']
-        is_admin = request.POST.get('is_admin') == 'on'
 
         if User.objects.filter(username=username).exists():
             messages.error(request, 'Username already exists.')
         else:
-            user = User.objects.create_user(username=username, email=email, password=password,is_staff=is_admin)
+            user = User.objects.create_user(username=username, email=email, password=password)
             login(request, user)
             return redirect('home')
 

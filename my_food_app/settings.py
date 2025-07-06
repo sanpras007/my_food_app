@@ -63,12 +63,12 @@ WSGI_APPLICATION = 'my_food_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # DATABASES = {
 #     'default': dj_database_url.config(
@@ -76,16 +76,16 @@ WSGI_APPLICATION = 'my_food_app.wsgi.application'
 #         conn_max_age=600
 #     )
 # }
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'food_app_db_arz6',
-        'USER': 'food_app_db_arz6_user',
-        'PASSWORD': 'v1n1eFJPWfwijqUF5LC2h90b84yMqe0a',
-        'HOST': 'dpg-d1khdjvdiees73ehdp2g-a.oregon-postgres.render.com',
-        'PORT': '5432',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'food_app_db_arz6',
+#         'USER': 'food_app_db_arz6_user',
+#         'PASSWORD': 'v1n1eFJPWfwijqUF5LC2h90b84yMqe0a',
+#         'HOST': 'dpg-d1khdjvdiees73ehdp2g-a.oregon-postgres.render.com',
+#         'PORT': '5432',
+#     }
+# }
 
 
 # Password validation
