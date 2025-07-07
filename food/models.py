@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from datetime import datetime
+from django.utils import timezone
 
 class Item(models.Model):
     sr_no = models.PositiveIntegerField(unique=True, blank=True, null=True)
@@ -12,7 +14,7 @@ class Item(models.Model):
 class Order(models.Model):
     sr_no = models.PositiveIntegerField(unique=True, blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    ordered_at = models.DateTimeField(auto_now_add=True)
+    ordered_at = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, default='PENDING')
 
     def __str__(self):

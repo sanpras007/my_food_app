@@ -8,6 +8,9 @@ from django.contrib import messages
 from .models import *
 from .forms import ItemForm
 from django.contrib.auth import logout
+from django.utils.timezone import make_aware
+from django.utils.timezone import now
+from datetime import datetime
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
@@ -81,6 +84,36 @@ def report_view(request):
     return render(request, 'report.html', context)
 
 @login_required
+def create_custom_order(request):
+    try:
+        items = Item.objects.all()
+        
+        if request.method == 'POST':
+            ordered_at_str = request.POST.get('order_date')
+            ordered_at = datetime.strptime(ordered_at_str, '%Y-%m-%d')
+
+            order = Order.objects.create(user=request.user, ordered_at=ordered_at)
+
+            for item in items:
+                qty = request.POST.get(f'qty_{item.id}')
+                if qty and int(qty) > 0:
+                    OrderItem.objects.create(
+                        order=order,
+                        item=item,
+                        quantity=int(qty),
+                        price_at_order=item.price
+                    )
+            return redirect('orders')
+
+        return render(request, 'create_order.html', {
+            'items': items,
+            'now': now()
+        })
+    except Exception as e:
+        from django.http import HttpResponse
+        return HttpResponse(f"Error: {e}")
+
+@login_required
 def confirm_order(request):
     if request.method == 'POST':
         item_ids = request.POST.getlist('item_ids')
@@ -150,6 +183,14 @@ def user_orders(request):
 
     orders = orders.order_by('-ordered_at')
     return render(request, 'orders.html', {'orders': orders})
+
+@login_required
+def delete_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if request.method == 'POST':
+        order.delete()
+        messages.success(request, f"Order #{order.sr_no} has been deleted.")
+    return redirect('orders')
 
 @user_passes_test(is_admin)
 @require_POST
