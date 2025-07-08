@@ -42,3 +42,13 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.item.name} in Order #{self.order.id}"
+    
+
+class AppSetting(models.Model):
+    allow_order_deletion = models.BooleanField(default=False)
+
+    def __str__(self):
+        return "Global App Settings"
+
+    class Meta:
+        verbose_name_plural = "App Settings"

@@ -20,10 +20,6 @@
     .search-box {
       margin-bottom: 20px;
     }
-    #item-list {
-      height: 500px;
-      overflow: auto;
-    }
   </style>
 </head>
 <body class="container mt-4">
@@ -44,7 +40,16 @@
           {% endif %}
         </ul>
         <ul class="navbar-nav">
-          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              👤 Account
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="accountDropdown">
+              <li><a class="dropdown-item" href="{% url 'account' %}">Accounts menu</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+            </ul>
+          </li>
         </ul>
       </div>
     </div>

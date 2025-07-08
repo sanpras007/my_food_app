@@ -15,6 +15,8 @@ from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 import csv
 
 
@@ -180,15 +182,19 @@ def user_orders(request):
         to_dt = parse_date(to_date)
         if to_dt:
             orders = orders.filter(ordered_at__date__lte=to_dt)
-
+    app_settings = AppSetting.objects.first()
     orders = orders.order_by('-ordered_at')
-    return render(request, 'orders.html', {'orders': orders})
+    app_settings = AppSetting.objects.first()
+    return render(request, 'orders.html', {'orders': orders,'app_settings': app_settings})
 
 @login_required
 def delete_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     if request.method == 'POST':
-        order.delete()
+        settings = AppSetting.objects.first()
+        if not settings or not settings.allow_order_deletion:
+            messages.error(request, "Please ask admin to turn on delete permission for this order from admin accounts menu.")
+            return redirect('orders')
         messages.success(request, f"Order #{order.sr_no} has been deleted.")
     return redirect('orders')
 
@@ -226,6 +232,22 @@ def user_signup(request):
             return redirect('home')
 
     return render(request, 'signup.html')
+
+@login_required
+def account_view(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, form.user)  # keeps user logged in
+            return redirect('account')  # Redirect back to the same page
+    else:
+        form = PasswordChangeForm(user=request.user)
+
+    return render(request, 'account.html', {
+        'form': form,
+        'user': request.user
+    })
 
 @login_required(login_url='login')
 def home(request):

@@ -1,4 +1,5 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
@@ -14,5 +15,9 @@ urlpatterns = [
     path('orders/delete/<int:order_id>/', views.delete_order, name='delete_order'),
     path('orders/create/', views.create_custom_order, name='create_order'),
     path('reports/', views.report_view, name='reports'),
-
+    path('account/', views.account_view, name='account'),
+    path('accounts/password_change/', auth_views.PasswordChangeView.as_view(
+        template_name='registration/password_change_form.html'
+    ), name='password_change'),
+    path('accounts/password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/password_change_done.html'), name='password_change_done'),
 ]
