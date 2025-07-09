@@ -11,6 +11,7 @@
     <h5 class="mt-4">🔐 Change Password</h5>
     <form method="post">
       {% csrf_token %}
+      <input type="hidden" name="form_type" value="password_form"> 
       {% for field in form %}
         <div class="mb-3">
           <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
@@ -24,6 +25,20 @@
         <button type="submit" class="btn btn-primary">Update Password</button>
       </div>
     </form>
+    {% if toggle_form %}
+      <hr>
+      <h4>🛠️ Admin Settings</h4>
+      <form method="post" class="form-check form-switch mt-3">
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="toggle_form">
+        <label class="form-check-label" for="id_allow_order_deletion">
+          Allow Users to Delete Orders
+        </label>
+        {{ toggle_form.allow_order_deletion }}
+        <br><br>
+        <button class="btn btn-sm btn-primary">Save</button>
+      </form>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

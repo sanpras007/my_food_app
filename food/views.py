@@ -6,7 +6,7 @@ from django.db.models import Sum
 from django.contrib.auth.models import User
 from django.contrib import messages
 from .models import *
-from .forms import ItemForm
+from .forms import ItemForm , AppSettingForm
 from django.contrib.auth import logout
 from django.utils.timezone import make_aware
 from django.utils.timezone import now
@@ -235,18 +235,34 @@ def user_signup(request):
 
 @login_required
 def account_view(request):
+    password_form = PasswordChangeForm(user=request.user, data=request.POST or None)
+    toggle_form = None
+
+    if request.user.is_staff:
+        setting = AppSetting.objects.first()
+        if not setting:
+            setting = AppSetting.objects.create(allow_order_deletion=False)
+        toggle_form = AppSettingForm(request.POST or None, instance=setting)
+
     if request.method == 'POST':
-        form = PasswordChangeForm(user=request.user, data=request.POST)
-        if form.is_valid():
-            form.save()
-            update_session_auth_hash(request, form.user)  # keeps user logged in
-            return redirect('account')  # Redirect back to the same page
-    else:
-        form = PasswordChangeForm(user=request.user)
+        form_type = request.POST.get('form_type')
+
+        if form_type == 'password_form':
+            if password_form.is_valid():
+                password_form.save()
+                update_session_auth_hash(request, password_form.user)
+                return redirect('account')
+
+        elif form_type == 'toggle_form' and request.user.is_staff:
+            if toggle_form and toggle_form.is_valid():
+                toggle_form.save()
+                messages.success(request, "Settings updated successfully.user can now delete orders.")
+                return redirect('account')
 
     return render(request, 'account.html', {
-        'form': form,
-        'user': request.user
+        'form': password_form,
+        'toggle_form': toggle_form,
+        'user': request.user,
     })
 
 @login_required(login_url='login')
