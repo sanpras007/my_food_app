@@ -195,6 +195,7 @@ def delete_order(request, order_id):
         if not settings or not settings.allow_order_deletion:
             messages.error(request, "Please ask admin to turn on delete permission for this order from admin accounts menu.")
             return redirect('orders')
+        order.delete()
         messages.success(request, f"Order #{order.sr_no} has been deleted.")
     return redirect('orders')
 
