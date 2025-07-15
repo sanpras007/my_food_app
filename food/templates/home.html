@@ -23,6 +23,14 @@
   </style>
 </head>
 <body class="container mt-4">
+  <div class="position-fixed top-0 end-0 p-3" style="z-index: 1100">
+    <div id="itemToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMessage">Item added!</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
     <div class="container-fluid">
@@ -133,6 +141,10 @@
         cart[id].qty++;
       }
       renderCart();
+
+      document.getElementById("toastMessage").innerText = `✔️ ${name} added to cart`;
+      const toast = new bootstrap.Toast(document.getElementById('itemToast'));
+      toast.show();
     }
 
     function removeItem(id) {
