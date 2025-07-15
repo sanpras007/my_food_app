@@ -6,7 +6,7 @@ from django.db.models import Sum
 from django.contrib.auth.models import User
 from django.contrib import messages
 from .models import *
-from .forms import ItemForm , AppSettingForm
+from .forms import *
 from django.contrib.auth import logout
 from django.utils.timezone import make_aware
 from django.utils.timezone import now
@@ -15,9 +15,12 @@ from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.contrib.auth.decorators import user_passes_test
-from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
+from .utils import send_verification_email
+from django.utils import timezone
+from datetime import timedelta
 import csv
+import uuid
 
 
 def user_logout(request):
@@ -230,13 +233,16 @@ def user_signup(request):
         else:
             user = User.objects.create_user(username=username, email=email, password=password)
             login(request, user)
-            return redirect('home')
+            UserProfile.objects.get_or_create(user=user)
+            send_verification_email(user)
+            messages.success(request, 'Account created! Please verify your email before logging in.')
+            return redirect('login')
 
     return render(request, 'signup.html')
 
 @login_required
 def account_view(request):
-    password_form = PasswordChangeForm(user=request.user, data=request.POST or None)
+    email_form = EmailUpdateForm(instance=request.user, data=request.POST if request.POST.get('form_type') == 'email_form' else None)
     toggle_form = None
 
     if request.user.is_staff:
@@ -248,11 +254,14 @@ def account_view(request):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
 
-        if form_type == 'password_form':
-            if password_form.is_valid():
-                password_form.save()
-                update_session_auth_hash(request, password_form.user)
-                return redirect('account')
+        if form_type == 'email_form' and email_form.is_valid():
+            email_form.save()
+            # Optionally reset email_verified status here
+            request.user.userprofile.email_verified = False
+            request.user.userprofile.save()
+            send_verification_email(request.user)
+            messages.success(request, "Verification link sent to your email.")
+            return redirect('account')
 
         elif form_type == 'toggle_form' and request.user.is_staff:
             if toggle_form and toggle_form.is_valid():
@@ -261,7 +270,7 @@ def account_view(request):
                 return redirect('account')
 
     return render(request, 'account.html', {
-        'form': password_form,
+        'email_form': email_form,
         'toggle_form': toggle_form,
         'user': request.user,
     })
@@ -276,3 +285,31 @@ def home(request):
         'request':request.user
     }
     return render(request, 'home.html', context)
+
+def verify_email(request):
+    token = request.GET.get('token')
+    if not token:
+        return messages.error("Invalid or missing token")
+
+    try:
+        profile = UserProfile.objects.get(verification_token=token)
+    except UserProfile.DoesNotExist:
+        return HttpResponse("Invalid verification link", status=400)
+
+    if timezone.now() > profile.token_expiry:
+        return HttpResponse("Verification link has expired", status=400)
+
+    profile.email_verified = True
+    profile.verification_token = None
+    profile.token_expiry = None
+    profile.save()
+
+    messages.success(request, "✅ Email verified successfully!")
+    return redirect('/')
+
+    
+@login_required
+def resend_verification(request):
+    send_verification_email(request.user)
+    messages.success(request, "Verification link sent to your email.")
+    return redirect('account')
