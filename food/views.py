@@ -19,6 +19,9 @@ from django.contrib.auth import update_session_auth_hash
 from .utils import send_verification_email
 from django.utils import timezone
 from datetime import timedelta
+import google.generativeai as genai
+from django.http import JsonResponse
+import json
 import csv
 import uuid
 
@@ -313,3 +316,158 @@ def resend_verification(request):
     send_verification_email(request.user)
     messages.success(request, "Verification link sent to your email.")
     return redirect('account')
+
+
+def process_voice_command(request):
+    """
+    Handles voice commands by routing them to the correct action based on AI-detected intent.
+    This function manages a conversational loop by receiving and sending context.
+    """
+    if request.method == 'POST':
+        audio_file = request.FILES.get('audio_command')
+        # Load the conversational context sent from the frontend
+        context = json.loads(request.POST.get('context', '{}'))
+
+        if not audio_file:
+            return JsonResponse({'status': 'error', 'message': 'No audio file found.'}, status=400)
+
+        # --- Configure Gemini API ---
+        GEMINI_API_KEY = "AIzaSyC3Gc6XCzQob5XlcSg058zOVB4g14IMb-c"
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        audio_blob = {'mime_type': audio_file.content_type, 'data': audio_file.read()}
+
+        # --- The Master Prompt for the Conversational Router ---
+        prompt = f"""
+        You are a conversational food ordering assistant. Your job is to understand the user's goal (their "intent") and extract key information ("entities").
+        The user might be in the middle of a conversation, which is provided in the 'context'.
+
+        # Available Intents:
+        - add_to_cart: For adding items. Entities: list of items with name and quantity.
+        - query_last_order: When the user asks to see, manage, or delete their last order.
+        - confirm_action: When the user gives an affirmative response like "yes", "confirm", "do it".
+        - cancel_action: When the user gives a negative response like "no", "cancel", "stop".
+        - confirm_order: When the user wants to finalize the items currently in their cart.
+
+        # Conversation Flow:
+        1. After adding items, the context will be {{"action": "ask_anything_else"}}.
+        2. If the user says "no" or "that's it", their intent is 'cancel_action'.
+        3. When context is {{"action": "ask_anything_else"}} and intent is 'cancel_action', you will then ask for final order confirmation.
+        4. When context is {{"action": "confirm_final_order"}} and intent is 'confirm_action', the order will be placed.
+
+        # Input from user:
+        - Audio command
+        - Current conversation context: {json.dumps(context)}
+
+        # Your Task:
+        Return a single, clean JSON object describing the user's intent. Do not add any conversational text, explanations, or markdown formatting. Your entire response must be ONLY the JSON object.
+
+        # Examples:
+        1. User says: "add two samosas and a tea" -> Your Output: {{"intent": "add_to_cart", "items": [{{"name": "Samosa", "quantity": 2}}, {{"name": "Tea", "quantity": 1}}]}}
+        2. User says: "can you delete my last order" -> Your Output: {{"intent": "query_last_order"}}
+        3. User says: "yes confirm" (Context has action: "confirm_delete") -> Your Output: {{"intent": "confirm_action"}}
+        """
+
+        try:
+            # --- Call Gemini and Clean the Response ---
+            response = model.generate_content([prompt, audio_blob])
+            raw_text = response.text
+            clean_text = raw_text.strip().replace("```json", "").replace("```", "").strip()
+            
+            print(f"--- Gemini Cleaned Response: {clean_text} ---") # For debugging
+            
+            command_data = json.loads(clean_text)
+            intent = command_data.get("intent")
+
+            # --- Intent Routing Logic ---
+
+            # 1. INTENT: Add items to the cart
+            if intent == "add_to_cart":
+                items_to_add = []
+                unrecognized_items = []
+                for item_data in command_data.get('items', []):
+                    try:
+                        item_obj = Item.objects.get(name__iexact=item_data.get('name'))
+                        items_to_add.append({
+                            "id": item_obj.id, "name": item_obj.name,
+                            "price": float(item_obj.price), "qty": item_data.get('quantity')
+                        })
+                    except Item.DoesNotExist:
+                        unrecognized_items.append(item_data.get('name'))
+                
+                spoken_response = "Added."
+                if unrecognized_items:
+                    spoken_response += f" I couldn't find {', '.join(unrecognized_items)}."
+                
+                # *** NEW: Ask if user wants to add more ***
+                spoken_response += " Anything else?"
+
+                return JsonResponse({
+                    "frontend_action": "update_cart_and_speak",
+                    "items": items_to_add,
+                    "spoken_response": spoken_response,
+                    "context": {"action": "ask_anything_else"} # Set context for the next step
+                })
+
+            # 2. INTENT: Start the 'delete last order' flow
+            elif intent == "query_last_order":
+                last_order = Order.objects.filter(user=request.user).order_by('-ordered_at').first()
+                if not last_order:
+                    return JsonResponse({"frontend_action": "speak", "spoken_response": "You don't have any past orders."})
+
+                order_items = list(OrderItem.objects.filter(order=last_order).values('item__name', 'quantity'))
+                item_descriptions = [f"{i['quantity']} {i['item__name']}" for i in order_items]
+                
+                # Ask the frontend to show details and request confirmation
+                return JsonResponse({
+                    "frontend_action": "ask_confirmation",
+                    "spoken_response": f"Your last order included {', '.join(item_descriptions)}. Are you sure you want to delete it?",
+                    "display_data": {"order_id": last_order.id, "items": order_items},
+                    "context": {"action": "confirm_delete", "order_id": last_order.id}
+                })
+
+            # 3. INTENT: User confirms a pending action
+            elif intent == "confirm_action":
+                if context.get("action") == "confirm_final_order":
+                    return JsonResponse({
+                        "frontend_action": "submit_order_form",
+                        "spoken_response": "Great. Placing your order now."
+                    })
+                elif context.get("action") == "confirm_delete":
+                    order_id_to_delete = context.get("order_id")
+                    Order.objects.filter(id=order_id_to_delete, user=request.user).delete()
+                    return JsonResponse({
+                        "frontend_action": "speak_and_refresh",
+                        "spoken_response": "OK, I have deleted the order."
+                    })
+                else:
+                    return JsonResponse({"frontend_action": "speak", "spoken_response": "I'm sorry, I lost track of what we were doing. Please start over."})
+
+
+            # 4. INTENT: User cancels a pending action
+            elif intent == "cancel_action":
+                if context.get("action") == "ask_anything_else":
+                    return JsonResponse({
+                        "frontend_action": "speak",
+                        "spoken_response": "Got it. Should I confirm the order?",
+                        "context": {"action": "confirm_final_order"}
+                    })
+                else:
+                    # Default cancel action
+                    return JsonResponse({
+                        "frontend_action": "speak",
+                        "spoken_response": "OK. I've cancelled the action.",
+                        "context": {}
+                    })
+
+            # Fallback for unknown intents
+            else:
+                return JsonResponse({"frontend_action": "speak", "spoken_response": "Sorry, I'm not sure how to do that yet."})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': f"Invalid JSON from AI. Raw response was: {response.text}"})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': f"An unexpected backend error occurred: {str(e)}"})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)

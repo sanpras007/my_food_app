@@ -5,7 +5,99 @@
   <title>Food Expense Calculator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
+    #cart-form {
+      display:None;
+      position: fixed;
+      z-index: 1200;
+      bottom: 20px;
+      background-color: white;
+    }
+    #assistant-bar {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto; 
+            height: 65px;
+            background-color: #ffffff;
+            border-radius: 35px; /* Creates the "pill" shape */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px 0 5px; /* Fine-tuned padding */
+            gap: 8px; /* Space between animation and text */
+            transition: transform 0.2s ease-in-out;
+        }
+
+        #assistant-lottie-container {
+            width: 55px; /* Explicitly control the size of the animation */
+            height: 55px;
+        }
+        
+        #assistant-lottie-container dotlottie-wc {
+            width: 100%;
+            height: 100%;
+        }
+
+        #assistant-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            margin-right: 15px;
+        }
+        
+        @media (max-width: 360px) {
+            #assistant-bar {
+                height: 60px;
+                bottom: 20px;
+            }
+            #assistant-text {
+                font-size: 14px;
+            }
+        }
+      
+      #voiceAssistantModal .modal-content {
+          background-color: #f8f9fa;
+          border-radius: 15px;
+      }
+      .listening-animation {
+          position: relative;
+          width: 150px;
+          height: 150px;
+          margin: 20px auto;
+          display: none; /* Hidden by default */
+      }
+      .listening-animation .circle {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background-color: #0d6efd;
+          border-radius: 50%;
+          opacity: 0.6;
+          animation: pulse 2s infinite ease-in-out;
+      }
+      
+      .listening-animation .circle.inner {
+          animation-delay: -1s;
+      }
+      @keyframes pulse {
+          0% {
+              transform: scale(0.1);
+              opacity: 0.0;
+          }
+          50% {
+              opacity: 0.4;
+          }
+          100% {
+              transform: scale(1);
+              opacity: 0.0;
+          }
+      }
     .item-card {
       border: 2px solid #ccc;
       border-radius: 15px;
@@ -19,6 +111,9 @@
     }
     .search-box {
       margin-bottom: 20px;
+    }
+    #item-list{
+      overflow: auto;
     }
   </style>
 </head>
@@ -114,8 +209,9 @@
   </div>
 
   <!-- Cart section -->
-  <h4>🛒 Selected Items</h4>
-  <form method="POST" action="/confirm-order/">
+  
+  <form method="POST" action="/confirm-order/" id="cart-form">
+    <h4>🛒 Selected Items</h4>
     {% csrf_token %}
     <div class="table-responsive">
       <table class="table table-bordered" id="cart-table">
@@ -131,6 +227,39 @@
     </div>
     <button type="submit" class="btn btn-success">Confirm Purchase</button>
   </form>
+  <div id="assistant-bar" data-bs-toggle="modal" data-bs-target="#voiceAssistantModal">
+      <div id="assistant-lottie-container">
+          <dotlottie-wc 
+              src="https://lottie.host/95ea934c-a07e-4c79-a8c1-1f44044c7d52/Nwgsml8Kwq.lottie" 
+              speed="1" 
+              autoplay 
+              loop>
+          </dotlottie-wc>
+      </div>
+      <span id="assistant-text">Tap to Speak</span>
+  </div>
+
+  <div class="modal fade" id="voiceAssistantModal" tabindex="-1" aria-labelledby="voiceAssistantModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-header border-0">
+                  <h5 class="modal-title" id="voiceAssistantModalLabel">Assistant GIMBRU here</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body text-center">
+                  <div id="listening-animation">
+                      <div class="circle"></div>
+                      <div class="circle inner"></div>
+                  </div>
+                  <p id="modal-status-message" class="lead mt-3">Click the button below to start speaking with gimbruttan.</p>
+                  <button id="modal-record-btn" class="btn btn-primary btn-lg rounded-circle mt-3" style="width: 80px; height: 80px; font-size: 30px;">
+                      🎙️
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.6.2/dist/dotlottie-wc.js" type="module"></script>
   <script>
     let cart = {};
 
@@ -142,57 +271,183 @@
       }
       renderCart();
 
-      document.getElementById("toastMessage").innerText = `✔️ ${name} added to cart`;
-      const toast = new bootstrap.Toast(document.getElementById('itemToast'));
-      toast.show();
+        document.getElementById("toastMessage").innerText = `✔️ ${name} added to cart`;
+        const toast = new bootstrap.Toast(document.getElementById('itemToast'));
+        toast.show();
     }
 
     function removeItem(id) {
-      delete cart[id];
-      renderCart();
+        delete cart[id];
+        renderCart();
     }
 
     function renderCart() {
-      const tbody = document.querySelector('#cart-table tbody');
-      const tab_foot = document.querySelector('#cart-table tfoot')
-      const totalEl = document.getElementById('totalAmount');
-      let total = 0;
-      tbody.innerHTML = '';
+        const tbody = document.querySelector('#cart-table tbody');
+        const tab_foot = document.querySelector('#cart-table tfoot')
+        const totalEl = document.getElementById('totalAmount');
+        
+        let total = 0;
+        tbody.innerHTML = '';
 
-      for (const id in cart) {
-        const item = cart[id];
-        const itemTotal = item.price * item.qty;
-        total += itemTotal;
+        for (const id in cart) {
+            const item = cart[id];
+            const itemTotal = item.price * item.qty;
+            total += itemTotal;
 
-        tbody.innerHTML += `
-          <tr>
-            <td>${item.name}</td>
-            <td>
-              <input type="number" name="qty_${id}" value="${item.qty}" min="1" class="form-control"
-                    onchange="cart['${id}'].qty = parseInt(this.value); renderCart();">
-              <input type="hidden" name="item_ids" value="${id}">
-            </td>
-            <td>₹${itemTotal}</td>
-            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem('${id}')">Remove</button></td>
-          </tr>
-        `;
-      }
-      tab_foot.style.display = Object.keys(cart).length > 0 ? 'table-footer-group' : 'none';
-      totalEl.textContent = `₹${total}`;
+            tbody.innerHTML += `
+            <tr>
+                <td>${item.name}</td>
+                <td>
+                <input type="number" name="qty_${id}" value="${item.qty}" min="1" class="form-control"
+                        onchange="cart['${id}'].qty = parseInt(this.value); renderCart();">
+                <input type="hidden" name="item_ids" value="${id}">
+                </td>
+                <td>₹${itemTotal.toFixed(2)}</td>
+                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem('${id}')">Remove</button></td>
+            </tr>
+            `;
+        }
+        tab_foot.style.display = Object.keys(cart).length > 0 ? 'table-footer-group' : 'none';
+        document.getElementById("cart-form").style.display = Object.keys(cart).length > 0 ? 'block' : 'none';
+        document.getElementById("item-list").style.height = Object.keys(cart).length > 0 ? '500px' : '100%';
+        totalEl.textContent = `₹${total.toFixed(2)}`;
     }
-
 
     function filterItems() {
-      const input = document.getElementById('searchInput');
-      const filter = input.value.toLowerCase();
-      const items = document.getElementsByClassName('item-box');
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const items = document.getElementsByClassName('item-box');
 
-      for (let i = 0; i < items.length; i++) {
-        const name = items[i].querySelector('.item-name').innerText.toLowerCase();
-        items[i].style.display = name.includes(filter) ? '' : 'none';
-      }
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].querySelector('.item-name').innerText.toLowerCase();
+            items[i].style.display = name.includes(filter) ? '' : 'none';
+        }
     }
-  </script>
+
+    // --- NEW AND IMPROVED VOICE ASSISTANT LOGIC ---
+    // --- NEW CONVERSATIONAL VOICE LOGIC ---
+    const recordBtn = document.getElementById('modal-record-btn');
+    const statusMessage = document.getElementById('modal-status-message');
+    const listeningAnimation = document.getElementById('listening-animation');
+    const confirmationArea = document.createElement('div');
+    confirmationArea.id = 'confirmation-area';
+    statusMessage.parentNode.insertBefore(confirmationArea, statusMessage);
+
+
+    let mediaRecorder;
+    let isRecording = false;
+    let audioChunks = [];
+    let conversationContext = {};
+
+    function speak(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        speechSynthesis.speak(utterance);
+    }
+
+    function handleBackendResponse(result) {
+        conversationContext = result.context || {}; 
+        listeningAnimation.style.display = 'none';
+
+        if (result.spoken_response) {
+            speak(result.spoken_response);
+            statusMessage.textContent = result.spoken_response;
+        }
+
+        // The ROUTER for the frontend
+        switch (result.frontend_action) {
+            case 'update_cart_and_speak':
+                result.items.forEach(item => {
+                    if (!cart[item.id]) {
+                        cart[item.id] = { name: item.name, price: item.price, qty: item.qty };
+                    } else {
+                        cart[item.id].qty += item.qty;
+                    }
+                });
+                renderCart();
+                break;
+            
+            case 'ask_confirmation':
+                let detailsHtml = `<div class="alert alert-warning mt-3"><h5>Confirm Action</h5><p>Order ID: ${result.display_data.order_id}</p><p>Say "Yes" to confirm or "No" to cancel.</p></div>`;
+                confirmationArea.innerHTML = detailsHtml;
+                break;
+
+            case 'speak_and_refresh':
+                confirmationArea.innerHTML = '';
+                setTimeout(() => window.location.reload(), 3000);
+                break;
+
+            case 'speak':
+                confirmationArea.innerHTML = '';
+                break;
+
+            // *** NEW ACTION TO HANDLE ***
+            case 'submit_order_form':
+                const cartForm = document.getElementById('cart-form');
+                if (Object.keys(cart).length > 0) {
+                    cartForm.submit();
+                } else {
+                    const msg = "Your cart is empty. Please add items before confirming.";
+                    speak(msg);
+                    statusMessage.textContent = msg;
+                }
+                break;
+        }
+    }
+
+    recordBtn.onclick = async () => {
+        if (isRecording) {
+            mediaRecorder.stop();
+        } else {
+            try {
+                let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+                confirmationArea.innerHTML = ''; // Clear old confirmations
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                mediaRecorder.start();
+                
+                isRecording = true;
+                recordBtn.innerHTML = '⏹️';
+                recordBtn.classList.add('btn-danger');
+                statusMessage.textContent = "Listening...";
+                listeningAnimation.style.display = 'block';
+
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                mediaRecorder.onstop = async () => {
+                    isRecording = false;
+                    recordBtn.innerHTML = '🎙️';
+                    recordBtn.classList.remove('btn-danger');
+                    statusMessage.textContent = "Processing...";
+
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const formData = new FormData();
+                    formData.append('audio_command', audioBlob, 'command.webm');
+                    formData.append('context', JSON.stringify(conversationContext)); 
+
+                    try {
+                        const response = await fetch('/api/process-voice-command/', {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                            body: formData
+                        });
+                        const result = await response.json();
+                        handleBackendResponse(result);
+                         // If there was an error, reset the status message after a delay
+                        if (result.status === 'error') {
+                            setTimeout(() => {
+                                statusMessage.textContent = "Click the button below to start speaking.";
+                            }, 4000);
+                        }
+                    } catch (error) {
+                        statusMessage.textContent = "Error communicating with server.";
+                    }
+                    stream.getTracks().forEach(track => track.stop());
+                };
+            } catch (err) {
+                statusMessage.textContent = "Could not access microphone.";
+            }
+        }
+    };
+</script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
