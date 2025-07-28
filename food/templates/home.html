@@ -395,6 +395,25 @@
     }
 
     recordBtn.onclick = async () => {
+        // --- NEW: Check for browser support first ---
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            statusMessage.textContent = "Sorry, your browser doesn't support microphone access.";
+            speak("Sorry, your browser does not support this feature.");
+            return;
+        }
+        if (window.MediaRecorder === undefined) {
+             statusMessage.textContent = "Sorry, your browser doesn't support audio recording.";
+             speak("Sorry, your browser does not support audio recording.");
+             return;
+        }
+        // Check for non-secure connection, which is the most likely issue on iOS
+        if (window.location.protocol !== 'https:') {
+            statusMessage.textContent = "A secure connection (HTTPS) is required to use the microphone.";
+            speak("A secure connection is required for this feature.");
+            return;
+        }
+
+
         if (isRecording) {
             mediaRecorder.stop();
         } else {
@@ -443,7 +462,10 @@
                     stream.getTracks().forEach(track => track.stop());
                 };
             } catch (err) {
-                statusMessage.textContent = "Could not access microphone.";
+                // This catch block will now handle permission denials more accurately
+                console.error("Error during microphone access:", err);
+                statusMessage.textContent = "Microphone access was denied. Please check your browser settings.";
+                speak("Microphone access was denied.");
             }
         }
     };
